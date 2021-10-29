@@ -2,49 +2,70 @@ package samedy.bot
 
 import com.github.kotlintelegrambot.bot
 import com.github.kotlintelegrambot.dispatch
-import com.github.kotlintelegrambot.dispatcher.command
-import com.github.kotlintelegrambot.dispatcher.pollAnswer
+import com.github.kotlintelegrambot.dispatcher.*
+import com.github.kotlintelegrambot.dispatcher.message
 import com.github.kotlintelegrambot.entities.ChatId
-import com.github.kotlintelegrambot.entities.polls.PollType.QUIZ
+import com.github.kotlintelegrambot.entities.InlineKeyboardMarkup
+import com.github.kotlintelegrambot.entities.KeyboardReplyMarkup
+import com.github.kotlintelegrambot.entities.ParseMode.MARKDOWN
+import com.github.kotlintelegrambot.entities.ParseMode.MARKDOWN_V2
+import com.github.kotlintelegrambot.entities.ReplyKeyboardRemove
+import com.github.kotlintelegrambot.entities.TelegramFile.ByUrl
+import com.github.kotlintelegrambot.entities.dice.DiceEmoji
+import com.github.kotlintelegrambot.entities.inlinequeryresults.InlineQueryResult
+import com.github.kotlintelegrambot.entities.inlinequeryresults.InputMessageContent
+import com.github.kotlintelegrambot.entities.inputmedia.InputMediaPhoto
+import com.github.kotlintelegrambot.entities.inputmedia.MediaGroup
+import com.github.kotlintelegrambot.entities.keyboard.InlineKeyboardButton
+import com.github.kotlintelegrambot.entities.keyboard.KeyboardButton
+import com.github.kotlintelegrambot.extensions.filters.Filter
+import com.github.kotlintelegrambot.logging.LogLevel
+import com.github.kotlintelegrambot.network.fold
 
 fun main() {
-    bot {
+    val supportedCommands = listOf("/ping", "/marko")
+
+    val bot = bot {
         token = System.getenv("SAMEDY_TOKEN") ?: ""
+        timeout = 30
+
         dispatch {
-            pollAnswer {
-                println("${pollAnswer.user.username} has selected the option ${pollAnswer.optionIds.lastOrNull()} in the poll ${pollAnswer.pollId}")
+
+            command("ping") {
+                bot.sendMessage(chatId = ChatId.fromId(message.chat.id), text = "pong!")
             }
-            command("regularPoll") {
-                bot.sendPoll(
+
+            command("marko") {
+                bot.sendMessage(chatId = ChatId.fromId(message.chat.id), text = "polo!")
+            }
+
+            message(!Filter.Command) {
+                bot.sendMessage(
                     chatId = ChatId.fromId(message.chat.id),
-                    question = "Pizza with or without pineapple?",
-                    options = listOf("With :(", "Without :)"),
-                    isAnonymous = false
+                    text = """
+                        Sorry, but now I dont know what is "${message.text}"
+                         I know only these commands: $supportedCommands
+                    """
                 )
             }
 
-            command("quizPoll") {
-                bot.sendPoll(
-                    chatId = ChatId.fromId(message.chat.id),
-                    type = QUIZ,
-                    question = "Java or Kotlin?",
-                    options = listOf("Java", "Kotlin"),
-                    correctOptionId = 1,
-                    isAnonymous = false
-                )
+            message(Filter.Command) {
+                if (message.text !in supportedCommands) {
+                    bot.sendMessage(
+                        chatId = ChatId.fromId(message.chat.id),
+                        text = """
+                            Sorry, but now I dont know command "${message.text}"
+                             I know only these commands: $supportedCommands
+                        """
+                    )
+                }
             }
 
-            command("closedPoll") {
-                bot.sendPoll(
-                    chatId = ChatId.fromId(message.chat.id),
-                    type = QUIZ,
-                    question = "Foo or Bar?",
-                    options = listOf("Foo", "Bar", "FooBar"),
-                    correctOptionId = 1,
-                    isClosed = true,
-                    explanation = "A closed quiz because I can"
-                )
+            telegramError {
+                println(error.getErrorMessage())
             }
         }
-    }.startPolling()
+    }
+
+    bot.startPolling()
 }
